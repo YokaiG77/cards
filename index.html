@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>C.A.R.D.S. | Collectif de créateurs</title>
-<meta name="description" content="Cinq créateurs, cinq arcanes, un seul Monde. Tire une carte et découvre les membres du collectif C.A.R.D.S.">
+<meta name="description" content="Collectif d'Artistes et de Réalisateurs Digitaux et Streaming : cinq créateurs, cinq arcanes, un seul Monde.">
 <meta name="theme-color" content="#0a0d22">
 <meta property="og:title" content="C.A.R.D.S. | Collectif de créateurs">
 <meta property="og:description" content="Cinq créateurs, cinq arcanes, un seul Monde. Tire une carte.">
@@ -73,7 +73,12 @@ nav .in{display:flex;align-items:center;justify-content:space-between;gap:12px;h
   background:linear-gradient(160deg,#2a2a3a,#111118);border:2px solid transparent;background-clip:padding-box;box-shadow:0 0 0 2px var(--c),0 10px 26px rgba(0,0,0,.5)}
 .tile .f span{font-family:var(--disp);font-weight:800;font-size:clamp(28px,6.4vw,74px);line-height:1;color:var(--givre)}
 .tile .bk{transform:rotateY(180deg)}
-.tile .bk svg{width:62%;height:auto;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--c) 60%,transparent))}
+.tile .bk{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7%;container-type:inline-size}
+.tile .bk svg{width:46%;height:auto;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--c) 60%,transparent))}
+.tile .bk em{font-style:normal;font-family:var(--ui);font-weight:800;font-size:12.5cqw;letter-spacing:.01em;color:var(--givre);max-width:92%;text-align:center;line-height:1.1}
+.tile .bk em b{color:var(--c);font-weight:800}
+.acro{margin:-6px 0 18px;font-family:var(--ui);font-weight:600;font-size:clamp(14px,1.6vw,18px);color:#d6daf2;letter-spacing:.01em}
+.acro b{font-weight:800;text-shadow:0 0 12px currentColor}
 .dot{width:clamp(8px,1.4vw,16px);aspect-ratio:1;transform:rotate(45deg);margin-bottom:6px;flex:none;background:var(--c);border-radius:2px}
 .hint{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.08em;margin:-12px 0 22px}
 .lead{font-size:clamp(17px,2vw,21px);color:#dfe1ea;max-width:34ch;margin:0 0 28px;font-weight:600}
@@ -299,7 +304,8 @@ section::after{content:"";position:absolute;top:-9px;left:50%;width:14px;height:
     <div>
       <span class="kicker">Collectif de créateurs</span>
       <div class="tiles" id="tiles"></div>
-      <p class="hint">Survole les lettres, chacune cache un arcane</p>
+      <p class="acro" id="acro">Collectif d'Artistes et de Réalisateurs Digitaux et Streaming</p>
+      <p class="hint">Survole les lettres pour retourner les cartes</p>
       <p class="lead">Cinq créateurs, cinq arcanes, un seul Monde. Et <em>beaucoup</em> de bêtises en live.</p>
       <div class="ctas"><a class="btn pri" href="#tirage">Tirer ma carte</a><a class="btn sec" href="#regles">C'est quoi le délire ?</a></div>
     </div>
@@ -480,12 +486,14 @@ function burst(x,y,cols,n=16){
 }
 const centerOf=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2];};
 
+const WORDS=["Collectif","Artistes","Réalisateurs","Digitaux","Streaming"];
+document.getElementById('acro').innerHTML=`<b style="color:${COL[0]}">C</b>ollectif d'<b style="color:${COL[1]}">A</b>rtistes et de <b style="color:${COL[2]}">R</b>éalisateurs <b style="color:${COL[3]}">D</b>igitaux et <b style="color:${COL[4]}">S</b>treaming`;
 /* lettres-cartes */
 const tiles=$('tiles');
 "CARDS".split('').forEach((L,i)=>{
-  const b=document.createElement('button');b.className='tile';b.type='button';b.setAttribute('aria-label',`${L} : ${M[i].name}, ${M[i].who}`);
+  const b=document.createElement('button');b.className='tile';b.type='button';b.setAttribute('aria-label',`${L} : ${WORDS[i]}, ${M[i].name}, ${M[i].who}`);
   b.style.cssText=`--c:${COL[i]};--r:${[-7,4,-3,6,-5][i]}deg;--dl:${-i*.6}s`;
-  b.innerHTML=`<div class="in3"><div class="f"><span>${L}</span></div><div class="f bk"><svg viewBox="0 0 24 24" fill="none" stroke="${COL[i]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyph(M[i].k).replace(/var\(--m\d\)/g,COL[i]).replace(/var\(--n3\)/g,'#ff5fae').replace(/var\(--o3\)/g,'#4c9be8')}</svg></div></div>`;
+  b.innerHTML=`<div class="in3"><div class="f"><span>${L}</span></div><div class="f bk"><svg viewBox="0 0 24 24" fill="none" stroke="${COL[i]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyph(M[i].k).replace(/var\(--m\d\)/g,COL[i]).replace(/var\(--n3\)/g,'#ff5fae').replace(/var\(--o3\)/g,'#4c9be8')}</svg><em><b>${WORDS[i][0]}</b>${WORDS[i].slice(1)}</em></div></div>`;
   b.onclick=()=>{b.classList.toggle('on');const[x,y]=centerOf(b);burst(x,y,[COL[i],'#f2f3f7'],10);};
   tiles.appendChild(b);
   if(i<4){const d=document.createElement('span');d.className='dot';d.style.setProperty('--c',COL[i]);tiles.appendChild(d);}
