@@ -116,14 +116,19 @@ section{padding-block:86px}
 .table{position:relative;aspect-ratio:5/3.6;container-type:inline-size;border-radius:24px;overflow:hidden;max-width:100%;
   background:radial-gradient(70% 80% at 50% 70%,color-mix(in srgb,var(--cur) 18%,#191926),#0c0c12);box-shadow:inset 0 0 0 1px var(--rule);transition:background 1s}
 .table::after{content:"";position:absolute;inset:14px;border-radius:16px;border:1px dashed rgba(255,255,255,.1);pointer-events:none}
-.slot{position:absolute;left:50%;top:22cqw;width:17cqw;aspect-ratio:3/5;margin-left:-8.5cqw;cursor:pointer;background:none;border:0;padding:0;color:inherit;
-  transform:translate(var(--x),calc(var(--y) - var(--lift,0cqw))) rotate(var(--rr,var(--r))) scale(var(--s,1));
-  transition:transform .75s cubic-bezier(.3,1.35,.5,1),filter .4s;z-index:var(--z)}
-.slot:hover{--lift:3cqw}
-.slot.sel{--lift:5cqw;--rr:0deg;--s:1.12;z-index:20}
-.slot .c3{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.65,0,.35,1)}
-.slot.sel .c3{transform:rotateY(180deg)}
-.table.gather .slot{transform:translate(0,2cqw) rotate(var(--gr)) scale(.95);transition:transform .6s cubic-bezier(.65,0,.35,1)}
+.slot{position:absolute;left:50%;top:22cqw;width:17cqw;aspect-ratio:3/5;margin-left:-8.5cqw;cursor:pointer;background:none;border:0;padding:0;color:inherit;will-change:transform,filter}
+.slot .hov{position:absolute;inset:0;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+.table:not(.busy) .slot:not(.sel):hover .hov{transform:translateY(-2.6cqw)}
+.slot .c3{position:absolute;inset:0;transform-style:preserve-3d}
+.aura,.rays,.ring{position:absolute;left:50%;top:35cqw;pointer-events:none;opacity:0;transform:translate(-50%,-50%)}
+.aura{width:70cqw;height:70cqw;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--cur) 55%,transparent),color-mix(in srgb,var(--cur) 18%,transparent) 45%,transparent 72%);z-index:24;mix-blend-mode:screen}
+.rays{width:90cqw;height:90cqw;z-index:23;mix-blend-mode:screen;transform:none;margin:-45cqw 0 0 -45cqw;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--cur) 30%,transparent) 0deg 3deg,transparent 3deg 15deg);
+  -webkit-mask:radial-gradient(closest-side,#000 15%,transparent 70%);mask:radial-gradient(closest-side,#000 15%,transparent 70%)}
+.rays.spin{animation:rays 24s linear infinite}
+@keyframes rays{to{rotate:360deg}}
+.ring{width:30cqw;height:30cqw;border-radius:50%;border:.5cqw solid var(--cur);box-shadow:0 0 3cqw var(--cur),inset 0 0 3cqw var(--cur);z-index:26}
+.flash{position:absolute;inset:-20% -60%;pointer-events:none;z-index:40;opacity:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.0) 44%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 56%,transparent 60%)}
 .table .tip{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.1em;pointer-events:none}
 .sheet{position:relative;min-width:0;background:var(--glass);border-radius:22px;padding:28px 26px 26px;box-shadow:inset 0 0 0 1px var(--rule);border-top:3px solid var(--cur);transition:border-color .8s}
 .sheet .num{font-family:var(--mono);font-size:13px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
@@ -531,13 +536,40 @@ let tr='';for(let r=0;r<2;r++)words.forEach((w,i)=>tr+=`<span>${w}</span><i styl
 $('track').innerHTML=tr;
 
 /* tirage */
-const table=$('table'),N=5,slots=[];let order=[0,1,2,3,4],sel=-1,fi=0,busy=false;
-const POS=k=>({x:`${(k-2)*15}cqw`,y:`${Math.abs(k-2)*2.2}cqw`,r:`${(k-2)*9}deg`});
+const table=$('table'),N=5,slots=[],cards=[];let order=[0,1,2,3,4],sel=-1,fi=0,busy=false,openT=null,fillT=null;
+const P=[];
+const FAN=k=>({x:(k-2)*15,y:Math.abs(k-2)*2.2,r:(k-2)*9,s:1});
+const T=p=>`translate(${p.x}cqw,${p.y}cqw) rotate(${p.r}deg) scale(${p.s})`;
+const IO='cubic-bezier(.65,0,.35,1)',OUTB='cubic-bezier(.25,1.25,.45,1)',OUT='cubic-bezier(.2,.8,.2,1)';
+const fx3=document.createElement('div');fx3.innerHTML='<div class="rays"></div><div class="aura"></div><div class="ring"></div><div class="flash"></div>';
+const [rays,aura,ring,flash]=[...fx3.children];[rays,aura,ring,flash].forEach(e=>table.appendChild(e));
 for(let i=0;i<N;i++){const s=document.createElement('button');s.type='button';s.className='slot';s.setAttribute('aria-label','Retourner une carte');
-  s.innerHTML=`<div class="c3"><div class="face back">${back()}</div><div class="face front">${front(i)}</div></div>`;
-  s.onclick=()=>pick(i);table.appendChild(s);slots.push(s);}
-function place(){order.forEach((m,k)=>{const p=POS(k),s=slots[m];s.style.setProperty('--x',p.x);s.style.setProperty('--y',p.y);s.style.setProperty('--r',p.r);s.style.setProperty('--z',k+1);});}
-place();
+  s.innerHTML=`<div class="hov"><div class="c3"><div class="face back">${back()}</div><div class="face front">${front(i)}</div></div></div>`;
+  s.onclick=()=>pick(i);table.appendChild(s);slots.push(s);cards.push(s.querySelector('.c3'));}
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function setPose(i,p){P[i]={...p};slots[i].style.transform=T(P[i]);}
+function mv(i,to,dur,delay=0,ease=IO,mid=null){
+  const from={...P[i]},tgt={...from,...to},kf=[{transform:T(from)}];
+  if(mid)kf.push({transform:T({...from,...to,...mid}),offset:mid.offset??.5});
+  kf.push({transform:T(tgt)});P[i]=tgt;
+  const a=slots[i].animate(kf,{duration:D(dur),delay:D(delay),easing:ease,fill:'both'});
+  a.finished.then(()=>{slots[i].style.transform=T(tgt);a.cancel();}).catch(()=>{});return a;
+}
+let faceUp=[0,0,0,0,0];
+function flip(i,up,dur=900,delay=0){
+  const P3='perspective(1400px) ';
+  const kf=up?[{transform:P3+'rotateY(0deg)'},{transform:P3+'rotateY(196deg)',offset:.72},{transform:P3+'rotateY(180deg)'}]
+            :[{transform:P3+'rotateY(180deg)'},{transform:P3+'rotateY(0deg)'}];
+  const a=cards[i].animate(kf,{duration:D(dur),delay:D(delay),easing:up?'cubic-bezier(.5,0,.3,1)':IO,fill:'both'});
+  faceUp[i]=up?1:0;a.finished.then(()=>{cards[i].style.transform=P3+`rotateY(${up?180:0}deg)`;a.cancel();}).catch(()=>{});
+}
+const dim=(i,on,delay=0)=>slots[i].animate([{filter:on?'brightness(1) saturate(1)':'brightness(.42) saturate(.55)'},{filter:on?'brightness(.42) saturate(.55)':'brightness(1) saturate(1)'}],{duration:D(450),delay:D(delay),easing:'ease',fill:'forwards'});
+function zOrder(){order.forEach((m,k)=>slots[m].style.zIndex=k+1);}
+function layoutFan(){order.forEach((m,k)=>setPose(m,FAN(k)));zOrder();}
+layoutFan();
+function fxOff(){[aura,ring].forEach(e=>e.getAnimations().forEach(a=>a.cancel()));aura.style.opacity=0;
+  rays.getAnimations().filter(a=>a.effect&&a.effect.getKeyframes().some(k=>'opacity' in k)).forEach(a=>a.cancel());
+  rays.animate([{opacity:getComputedStyle(rays).opacity},{opacity:0}],{duration:D(400),fill:'forwards'});rays.classList.remove('spin');}
 $('s-list').innerHTML=M.slice(0,5).map((m,i)=>`<span style="--c:${COL[i]}"><i></i>${m.who}</span>`).join('');
 function fill(i){
   const a=M[i];document.documentElement.style.setProperty('--cur',COL[i]);
@@ -549,23 +581,61 @@ function fill(i){
   if(!RM){$('s-name').querySelectorAll('.l').forEach((l,k)=>l.animate([{opacity:0,transform:'translateY(.4em) rotate(8deg)'},{opacity:1,transform:'none'}],{duration:600,delay:k*45,easing:'cubic-bezier(.3,1.5,.5,1)',fill:'both'}));
     [$('s-who'),$('s-fort'),$('s-bio'),kw].forEach((e,k)=>e.animate([{opacity:0,translate:'0 10px'},{opacity:1,translate:'0 0'}],{duration:600,delay:200+k*90,easing:'cubic-bezier(.2,.8,.2,1)',fill:'backwards'}));}
 }
+function reveal(i){
+  busy=true;table.classList.add('busy');sel=i;slots[i].classList.add('sel');document.documentElement.style.setProperty('--cur',COL[i]);
+  slots.forEach((s,j)=>{if(j!==i){dim(j,true);mv(j,{y:P[j].y+2.4},450,0,IO);}});
+  slots[i].style.zIndex=30;
+  mv(i,{x:0,y:-1.2,r:0,s:1.3},800,0,OUT,{y:-4.5,r:P[i].r*.4,s:1.22,offset:.55});
+  rays.classList.add('spin');rays.getAnimations().filter(a=>a.effect&&a.effect.getKeyframes().some(k=>'opacity' in k)).forEach(a=>a.cancel());
+  rays.animate([{opacity:0},{opacity:.9}],{duration:D(900),delay:D(250),fill:'forwards',easing:'ease'});
+  aura.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.3)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'}],{duration:D(1000),delay:D(300),easing:OUT,fill:'forwards'});
+  flip(i,true,1000,550);
+  setTimeout(()=>{
+    ring.animate([{opacity:.9,transform:'translate(-50%,-50%) scale(.6)'},{opacity:0,transform:'translate(-50%,-50%) scale(3.2)'}],{duration:D(900),easing:'cubic-bezier(.1,.7,.3,1)'});
+    flash.animate([{opacity:1,transform:'translateX(-55%)'},{opacity:1,transform:'translateX(55%)'}],{duration:D(850),easing:'cubic-bezier(.45,0,.2,1)'});
+    slots[i].animate([{transform:T(P[i])},{transform:T({...P[i],s:P[i].s*1.06})},{transform:T(P[i])}],{duration:D(500),easing:'ease-out'});
+    const[x,y]=centerOf(slots[i]);burst(x,y,[COL[i],'#f2f3f7',getComputedStyle(document.documentElement).getPropertyValue('--n'+(i+1)).trim()||COL[i]],22);
+  },D(1080));
+  clearTimeout(fillT);fillT=setTimeout(()=>{fill(i);busy=false;table.classList.remove('busy');$('shuffle').disabled=false;},D(1350));
+  $('tip').textContent=M[i].who+' | clique sur la carte pour ouvrir sa page';
+  clearTimeout(openT);openT=setTimeout(()=>{if(sel===i)openMember(i);},D(3200));
+}
+function unreveal(){
+  if(sel<0)return 0;const i=sel;sel=-1;clearTimeout(openT);slots[i].classList.remove('sel');
+  if(faceUp[i])flip(i,false,550);
+  fxOff();slots.forEach((s,j)=>{s.getAnimations().filter(a=>a.effect&&a.effect.getKeyframes().some(k=>'filter' in k)).forEach(a=>a.cancel());if(j!==i)s.animate([{filter:'brightness(.42) saturate(.55)'},{filter:'brightness(1) saturate(1)'}],{duration:D(400),easing:'ease'});});
+  order.forEach((m,k)=>mv(m,FAN(k),600,0,IO));setTimeout(zOrder,D(300));return 650;
+}
 function pick(i){
   if(busy)return;
   if(sel===i){openMember(i);return;}
-  slots.forEach(s=>s.classList.remove('sel'));sel=i;slots[i].classList.add('sel');$('tip').textContent=M[i].who+' | clique une autre carte pour changer';
   fi=Math.floor(Math.random()*3);
-  setTimeout(()=>{fill(i);const[x,y]=centerOf(slots[i]);burst(x,y,[COL[i],'#f2f3f7',COL[(i+2)%5]],18);},D(550));
-  setTimeout(()=>openMember(i),D(1700));
+  const wait=unreveal();busy=true;setTimeout(()=>reveal(i),D(wait));
 }
 $('again').onclick=()=>{if(sel<0)return;fi++;const e=$('s-fort');e.textContent=M[sel].f[fi%M[sel].f.length];if(!RM)e.animate([{transform:'rotate(-2deg) scale(.96)',opacity:.4},{transform:'none',opacity:1}],{duration:500,easing:'cubic-bezier(.3,1.6,.5,1)'});};
 $('shuffle').onclick=()=>{
-  if(busy)return;busy=true;$('shuffle').disabled=true;
-  slots.forEach(s=>{s.classList.remove('sel');s.style.setProperty('--gr',(Math.random()*30-15).toFixed(1)+'deg');});sel=-1;
-  setTimeout(()=>table.classList.add('gather'),D(500));
-  let n=0;const step=()=>{order.sort(()=>Math.random()-.5);order.forEach((m,k)=>{slots[m].style.setProperty('--gr',(Math.random()*30-15).toFixed(1)+'deg');slots[m].style.setProperty('--z',k+1);});n++;if(n<3)setTimeout(step,D(260));};
-  setTimeout(step,D(1000));
-  setTimeout(()=>{table.classList.remove('gather');place();},D(1900));
-  setTimeout(()=>{busy=false;$('shuffle').disabled=false;pick(order[Math.floor(Math.random()*N)]);},D(2700));
+  if(busy)return;$('shuffle').disabled=true;
+  let t=unreveal();busy=true;table.classList.add('busy');
+  const at=(ms,f)=>setTimeout(f,D(ms));
+  // 1. rassemblement en paquet
+  at(t,()=>order.forEach((m,k)=>{slots[m].style.zIndex=k+1;mv(m,{x:0,y:-k*.35,r:rnd(-3,3),s:1},620,k*55,IO);}));t+=620+5*55;
+  // 2. coupe en deux demi-paquets, légèrement inclinés
+  at(t,()=>order.forEach((m,k)=>{const L=k%2===0;mv(m,{x:L?-10.5:10.5,y:-Math.floor(k/2)*.4+1,r:L?-11:11},460,0,IO,{y:-2.5,offset:.5});}));t+=520;
+  // 3. riffle : les cartes retombent une à une, en alternance, sur le paquet central
+  at(t,()=>{const L=order.filter((m,k)=>k%2===0),R=order.filter((m,k)=>k%2===1);
+    const seq=[];while(L.length||R.length){if(L.length)seq.push(L.shift());if(R.length)seq.push(R.shift());}
+    const mix=seq.sort(()=>Math.random()-.5);order=mix;
+    mix.forEach((m,k)=>setTimeout(()=>{slots[m].style.zIndex=10+k;const side=P[m].x<0?-1:1;
+      mv(m,{x:0,y:-k*.35,r:rnd(-2,2)},380,0,'cubic-bezier(.5,0,.75,0)',{x:side*4,y:-5,r:side*4,offset:.45});},D(k*95)));});
+  t+=5*95+380+60;
+  // 4. coupe : les deux cartes du dessus passent dessous
+  at(t,()=>{const top=order.slice(-2);top.forEach((m,k)=>mv(m,{x:15,y:-1-k*.35,r:8},300,k*40,IO,{y:-4}));});t+=360;
+  at(t,()=>{const top=order.slice(-2);order=[...top,...order.slice(0,-2)];order.forEach((m,k)=>{slots[m].style.zIndex=k+1;mv(m,{x:0,y:-k*.35,r:rnd(-2,2)},top.includes(m)?380:240,top.includes(m)?top.indexOf(m)*50:0,OUT);});});t+=440;
+  // 5. on égalise le paquet puis on l'étale en éventail
+  at(t,()=>order.forEach(m=>slots[m].animate([{translate:'0 0'},{translate:'0 -.6cqw'},{translate:'0 0'}],{duration:D(220),easing:'ease-out'})));t+=260;
+  at(t,()=>order.forEach((m,k)=>mv(m,FAN(k),720,Math.abs(k-2)*70,OUTB)));t+=720+140+260;
+  // 6. tirage
+  at(t,()=>{busy=false;fi=Math.floor(Math.random()*3);reveal(order[Math.floor(Math.random()*N)]);});
 };
 
 
